@@ -87,6 +87,11 @@ main{padding:14px 14px 24px;max-width:820px;margin:0 auto}
 .opt.wrong{border-color:var(--bad);background:var(--bad-soft)}
 .opt.wrong .n{color:var(--bad)}
 .opt[disabled]{cursor:default}
+/* 보기 지문 (ㄱㄴㄷㄹ 박스, 자료 제시문) */
+.passage{border:1px solid var(--line);border-radius:10px;padding:11px 13px;margin:0 0 14px;
+         background:var(--bg);font-size:14px;line-height:1.7}
+.passage>div+div{margin-top:3px}
+.note .passage{margin:8px 0}
 .expl{background:var(--accent-soft);border-radius:12px;padding:13px;margin-top:12px;
       font-size:14px;line-height:1.7}
 .expl b{display:block;font-size:12px;color:var(--accent);margin-bottom:6px;
@@ -408,6 +413,7 @@ function viewQuizRun(){
       ${S.wrong[q.id] ? `<span class="pill bad">오답 ${S.wrong[q.id].n}회</span>`:''}
     </div>
     <p class="stem">${esc(q.stem)}</p>
+    ${passageHTML(q)}
     <div id="opts">`;
   q.options.forEach((o,k) => {
     h += `<button class="opt" data-k="${k+1}">
@@ -513,9 +519,14 @@ function viewNotes(){
   app.innerHTML = list.length ? list.map(noteHTML).join('')
                               : `<div class="empty">이 챕터에는 추출된 해설이 없습니다</div>`;
 }
+function passageHTML(q){
+  if (!q.passage || !q.passage.length) return '';
+  return `<div class="passage">${q.passage.map(p => `<div>${esc(p)}</div>`).join('')}</div>`;
+}
 function noteHTML(q){
   return `<div class="note">
     <div class="q">${esc(q.stem)}</div>
+    ${passageHTML(q)}
     ${q.answer ? `<div class="a">정답 ${CIRC[q.answer-1]} ${esc(q.options[q.answer-1])}</div>` : ''}
     <div class="e">${esc(q.expl)}</div></div>`;
 }
@@ -537,6 +548,7 @@ function viewWrong(){
       <div class="qmeta"><span class="pill">${esc(q._chTitle)}</span>
         <span class="pill bad">${w.n}회 틀림</span></div>
       <div class="q">${esc(q.stem)}</div>
+      ${passageHTML(q)}
       ${q.options.map((o,k) =>
         `<div class="e" style="color:${k+1===q.answer?'var(--ok)':'var(--sub)'};
           font-weight:${k+1===q.answer?600:400}">${CIRC[k]} ${esc(o)}</div>`).join('')}

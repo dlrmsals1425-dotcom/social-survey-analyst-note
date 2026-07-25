@@ -5,6 +5,8 @@
 """
 import re, json, sys, os
 sys.stdout.reconfigure(encoding='utf-8')
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from spacing import respace, fix_jamo, fix_jamo_lead
 
 SRC = os.environ.get(
     'OCR_MD',
@@ -103,6 +105,18 @@ for p in theory:                       # 본문 없는 헤딩 흡수
 
 # ══════════════ 2. 기출문제 + 해설 ══════════════
 CELL = re.compile(r'<t[dh][^>]*>(.*?)</t[dh]>', re.S)
+MD_SEP = re.compile(r'^[\s|:-]*$')
+
+
+def md_clean(s):
+    """마크다운 잔여물(### 머리표, 표 구분선, 파이프)을 걷어낸다."""
+    s = re.sub(r'#{1,6}\s*', ' ', s)
+    if MD_SEP.match(s):                     # |---|---| 같은 표 구분행
+        return ''
+    s = re.sub(r'\s*\|\s*', ' ', s)         # 표 파이프 → 공백
+    return re.sub(r'\s+', ' ', s).strip()
+
+
 chunks, i = [], Q_START
 while i < len(L):
     l = L[i]
@@ -111,12 +125,12 @@ while i < len(L):
         while j < len(L) and not L[j].strip().startswith('</table>'):
             buf.append(L[j]); j += 1
         for c in CELL.findall('\n'.join(buf)):
-            c = re.sub(r'<[^>]+>', ' ', c).strip()
+            c = md_clean(re.sub(r'<[^>]+>', ' ', c))
             if c:
                 chunks.append(c)
         i = j + 1
         continue
-    t = l.strip()
+    t = md_clean(l)
     if t and not t.startswith('!['):
         chunks.append(t)
     i += 1
@@ -173,13 +187,41 @@ def chapter_for(ci):
     return ch_ev[-1][1] if ch_ev else (1, 1)
 
 
+# 문제번호는 (?!\d) 로 막아 '2010년'의 201 을 번호로 오인하지 않게 한다
 STEM = re.compile(
-    r'(?:(?<=\n)\s*(?P<n1>\d{1,3})?\s*|(?<=[\s.다])(?P<n2>\d{1,3})\s*)'
+    r'(?:(?<=\n)\s*(?P<n1>\d{1,3}(?!\d))?\s*|(?<=[\s.다])(?P<n2>\d{1,3}(?!\d))\s*)'
     r'(?P<stem>[^\n①②③④?]{8,90}\?)\s*(?P<rd>(?:\s*\d\d-\d)*)')
+# 발문이 표 셀 두 개로 쪼개진 경우, 앞줄이 문장으로 끝나지 않으면 발문의 앞부분이다
+CONT_BAD = re.compile(r'[①②③④]|^(해설|해실|해성|허성|없성)|(다|다\.|음|임|함|요|까)\s*$|[.?]\s*$')
+# 'ㄱ.…' 같은 보기 지문 항목은 발문 앞부분이 아니다
+PASSAGE_ITEM = re.compile(r'^[ㄱ-ㅎ]\s*[.,)]|^\[')
+# 발문 앞에 눌어붙은 페이지 머리말·절 제목
+STEM_PREFIX = re.compile(
+    r'^\s*(?:\d{1,3}\s*)?(?:PART|CHAPTER)\s*[O0oQ]?[\d\s\-–—|]*[가-힣A-Za-z0-9 ·및]{0,20}?\s*(?=[가-힣])'
+    r'|^\s*\(\d\)\s*[가-힣][가-힣 ·]{0,18}\s+(?=[가-힣])'
+    r'|^\s*\d{1,3}\s*[|｜]\s*')
+
+
+def clean_stem(s):
+    s = re.sub(r'\s+', ' ', s).strip(' -–—·')
+    for _ in range(3):
+        t = STEM_PREFIX.sub('', s).strip(' -–—·')
+        if t == s or len(t) < 8:
+            break
+        s = t
+    return s
 OPTM = re.compile(r'[①②③④]')
 BARE = re.compile(r'(?:(?<=\n)|(?<=\s)|^)-?\s*([1-4])\s*(?=[가-힣A-Za-z(])')
 HAESUL = re.compile(r'(해설|해실|해성|허성|없성|헤설|해섬|애설|하설|해섧|해셜)')
-SENT_END = re.compile(r'(다|요|까|음|함|것|오)\.?\s')
+# 문장 끝. OCR이 마침표 뒤 공백을 흘리는 일이 잦아 마침표만으로도 끊는다.
+SENT_END = re.compile(r'[다요까음함것오]\.\s*|[다요까음함것오]\s')
+# 보기가 '~한다', '~이다' 처럼 문장형인지 판정
+SENT_TAIL = re.compile(r'(다|음|함|요|까|니다)\.?\s*$')
+# 'ㄱ,ㄴ,ㄹ' 형태의 보기 (OCR이 ㄱ→7, ㄹ→2 로 흘린 것 포함)
+JAMO_OPT = re.compile(r'^[ㄱ-ㅎ0-9A-Za-z□\s,.·~()-]{1,16}$')
+JAMO_HEAD = re.compile(r'^[ㄱ-ㅎ0-9A-Za-z□,.·~()-]+')
+# 페이지 번호·머리말 잔여물
+PAGE_JUNK = re.compile(r'^(\d{1,3}\s*)?(PART|CHAPTER)\b|^\d{1,3}$|^[\d\s.·|]+$')
 
 stems = list(STEM.finditer(text))
 recs = []
@@ -216,14 +258,40 @@ for k, m in enumerate(stems):
     h = HAESUL.search(tail)
     if h:
         segs[last_n], expl = tail[:h.start()], tail[h.end():]
+        # 2단 조판이 뒤엉켜 '해설' 표기가 해설 한복판에 찍힌 경우가 있다.
+        # 그 결과 마지막 보기가 비정상적으로 길어지면 문장 끝에서 다시 끊는다.
+        if len(segs[last_n]) > max(others) * 1.25 + 20:
+            c2 = SENT_END.search(segs[last_n], max(8, int(min(others) * 0.5)))
+            if c2:
+                expl = segs[last_n][c2.end():] + ' ' + expl
+                segs[last_n] = segs[last_n][:c2.end()]
     else:
-        lim = int(max(others) * 1.6) + 25
-        if len(tail) > lim:
-            cut = SENT_END.search(tail, lim // 2)
-            cut = cut.end() if cut else lim
+        others_txt = [v.strip() for k2, v in segs.items() if k2 != last_n]
+        if all(JAMO_OPT.match(o) for o in others_txt if o):
+            # 'ㄱ,ㄴ,ㄷ' 식 보기라면 마지막 보기도 자모 나열까지만이다
+            mm = JAMO_HEAD.match(tail.lstrip())
+            cut = (len(tail) - len(tail.lstrip())) + mm.end() if mm else 0
             segs[last_n], expl = tail[:cut], tail[cut:]
-        else:
+        elif all(len(o) <= 3 for o in others_txt) or max(others) == 0:
             expl = ''
+        else:
+            # 한 문항의 보기는 길이·형태가 서로 비슷하다.
+            # 다른 보기가 '~다'로 끝나는 문장형이면 첫 문장 끝에서,
+            # 명사구형이면 같은 어절 수만큼만 끊는다.
+            sentence_like = any(SENT_TAIL.search(o) for o in others_txt)
+            lim = int(max(others) * 1.5) + 12
+            if len(tail) <= lim:
+                expl = ''
+            elif sentence_like:
+                cut = SENT_END.search(tail, max(8, int(min(others) * 0.5)))
+                cut = cut.end() if cut else lim
+                segs[last_n], expl = tail[:cut], tail[cut:]
+            else:
+                nw = max(1, round(sum(len(o.split()) for o in others_txt) / len(others_txt)))
+                parts = tail.strip().split()
+                cut_txt = ' '.join(parts[:nw])
+                idx = tail.find(cut_txt) + len(cut_txt)
+                segs[last_n], expl = tail[:idx], tail[idx:]
 
     opts = [re.sub(r'\s+', ' ', segs[n]).strip(' -–—·.') for n in (1, 2, 3, 4)]
     expl = re.sub(r'\s+', ' ', expl).strip(' -–—·')
@@ -232,12 +300,36 @@ for k, m in enumerate(stems):
     if qm > 0 and '①' in expl[qm:]:
         expl = expl[:qm + 1].rsplit('. ', 1)[0].strip()
 
+    # ── 발문과 첫 보기 사이 = 보기 지문(ㄱㄴㄷㄹ 박스, 자료 제시문) ──
+    passage = []
+    for ln in body[:marks[0][1]].split('\n'):
+        ln = ln.strip(' -–—·')
+        if not ln or PAGE_JUNK.match(ln) or HAESUL.match(ln):
+            continue
+        passage.append(ln)
+    passage = passage if 0 < sum(len(x) for x in passage) <= 600 else []
+
+    # 발문이 표 셀 두 개로 쪼개진 경우에만 앞줄을 이어붙인다.
+    # 판별 조건: 앞줄은 문제번호로 시작하고, 이번 매치에는 번호가 없다.
+    stem_txt = m.group('stem')
+    ls = text.rfind('\n', 0, m.start())
+    if ls > 0 and not (m.group('n1') or m.group('n2')):
+        prev = text[text.rfind('\n', 0, ls) + 1:ls].strip()
+        pm = re.match(r'^(\d{1,3})(?!\d)\s+(\S.*)$', prev)
+        # ① 앞줄이 문제번호로 시작하면 그 줄이 발문의 앞부분이다
+        # ② 번호가 없더라도 이번 발문이 지나치게 짧으면 잘린 것으로 본다
+        cand = (pm.group(2) if pm else prev).strip()
+        if (pm or len(stem_txt) < 22) and 8 <= len(cand) <= 120 \
+                and not CONT_BAD.search(cand) and not PASSAGE_ITEM.match(cand):
+            stem_txt = cand + ' ' + stem_txt
+
     ci = chunk_of(m.start())
     num = m.group('n1') or m.group('n2')
     recs.append({
         'num': int(num) if num else None,
-        'stem': re.sub(r'\s+', ' ', m.group('stem')).strip(' -–—·'),
+        'stem': clean_stem(stem_txt),
         'rounds': m.group('rd').split(),
+        'passage': passage,
         'options': opts, 'expl': expl,
         'ch': chapter_for(ci), 'ci': ci,
     })
@@ -268,6 +360,9 @@ for fpos, pairs in ans_ev:
         last_num = nums[-1]
 
 # ── 품질 필터 ──
+STEM_JUNK = re.compile(r'^(PART|CHAPTER|\(\d\))')
+
+
 def ok(q):
     o = q['options']
     if any(not x or len(x) > 260 for x in o):
@@ -277,7 +372,10 @@ def ok(q):
     # 보기 안에 다른 보기 마커가 남아 있으면 표가 뒤엉킨 것
     if any(OPTM.search(x) for x in o):
         return False
-    if len(q['stem']) < 8:
+    # 앞부분이 잘렸거나 머리말이 눌어붙은 발문은 문제로 못 쓴다
+    if len(q['stem']) < 14:
+        return False
+    if STEM_JUNK.match(q['stem']):
         return False
     return True
 
@@ -285,6 +383,19 @@ def ok(q):
 kept = [q for q in recs if ok(q)]
 for q in kept:
     q.pop('ci', None)
+
+# ── OCR 정리: 자모 복원 + 띄어쓰기 교정 ──
+print('띄어쓰기 교정 중...', flush=True)
+for q in kept:
+    q['stem'] = respace(q['stem'])
+    q['options'] = [respace(fix_jamo(o)) for o in q['options']]
+    q['passage'] = [respace(fix_jamo_lead(fix_jamo(p))) for p in q['passage']]
+    q['expl'] = respace(q['expl'])
+for p in theory:
+    for t in p['topics']:
+        t['title'] = respace(t['title'])
+        for b in t['body']:
+            b['t'] = respace(b['t'])
 
 # ── 챕터별 그룹핑 ──
 groups = {}
