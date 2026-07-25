@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1f6feb">
+<title>사회조사분석사 2급 필기</title>
+<style>
+:root{
+  --bg:#f5f6f8; --card:#fff; --fg:#16181d; --sub:#6b7280; --line:#e3e5ea;
+  --accent:#1f6feb; --accent-soft:#e8f0fe; --ok:#0d9f6e; --ok-soft:#e3f7ef;
+  --bad:#e0463e; --bad-soft:#fdeceb; --warn:#b7791f;
+  --safe-b:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#0f1115; --card:#181b21; --fg:#e6e8ec; --sub:#9aa1ac; --line:#282c34;
+    --accent:#4c8dff; --accent-soft:#17243d; --ok:#3ddc97; --ok-soft:#12291f;
+    --bad:#ff6b61; --bad-soft:#2c1614; --warn:#e0b341;
+  }
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg);color:var(--fg);
+  font:15px/1.65 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",
+       "Noto Sans KR",system-ui,sans-serif;
+  padding-bottom:calc(64px + var(--safe-b));
+  overflow-wrap:anywhere;word-break:keep-all;
+}
+header{
+  position:sticky;top:0;z-index:20;background:var(--card);
+  border-bottom:1px solid var(--line);padding:12px 16px;
+  display:flex;align-items:center;gap:10px;min-height:52px;
+}
+header h1{font-size:16px;margin:0;font-weight:700;flex:1;line-height:1.3}
+header .sub{font-size:12px;color:var(--sub);font-weight:400;display:block;margin-top:1px}
+.iconbtn{
+  background:none;border:0;color:var(--accent);font-size:15px;font-weight:600;
+  padding:6px 8px;cursor:pointer;border-radius:8px;flex:none;
+}
+.iconbtn:active{background:var(--accent-soft)}
+main{padding:14px 14px 24px;max-width:820px;margin:0 auto}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;
+      padding:14px;margin-bottom:12px}
+.card h2{font-size:15px;margin:0 0 10px}
+.muted{color:var(--sub);font-size:13px}
+.row{display:flex;align-items:center;gap:10px}
+.spread{justify-content:space-between}
+
+/* 홈 */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:14px;
+      padding:12px 8px;text-align:center}
+.stat b{display:block;font-size:21px;line-height:1.25}
+.stat span{font-size:11px;color:var(--sub)}
+.bar{height:7px;border-radius:99px;background:var(--line);overflow:hidden;margin-top:8px}
+.bar>i{display:block;height:100%;background:var(--accent);border-radius:99px;
+       transition:width .35s ease}
+
+.item{display:flex;align-items:center;gap:12px;padding:13px 14px;background:var(--card);
+      border:1px solid var(--line);border-radius:12px;margin-bottom:8px;cursor:pointer;
+      text-align:left;width:100%;font:inherit;color:inherit}
+.item:active{background:var(--accent-soft)}
+.item .t{flex:1;min-width:0}
+.item .t b{display:block;font-size:14.5px;font-weight:600}
+.item .t span{font-size:12px;color:var(--sub)}
+.chev{color:var(--sub);flex:none;font-size:18px;line-height:1}
+.pill{font-size:11px;padding:3px 8px;border-radius:99px;background:var(--accent-soft);
+      color:var(--accent);font-weight:700;flex:none}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.pill.bad{background:var(--bad-soft);color:var(--bad)}
+.pill.grey{background:var(--line);color:var(--sub)}
+
+/* 문제 */
+.qmeta{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+.stem{font-size:16px;font-weight:600;line-height:1.6;margin:0 0 14px}
+.opt{display:flex;gap:10px;align-items:flex-start;width:100%;text-align:left;
+     background:var(--card);border:1.5px solid var(--line);border-radius:12px;
+     padding:12px 13px;margin-bottom:8px;font:inherit;color:inherit;cursor:pointer;
+     line-height:1.55;transition:border-color .15s,background .15s}
+.opt:active{border-color:var(--accent)}
+.opt .n{font-weight:700;color:var(--sub);flex:none;min-width:16px}
+.opt.correct{border-color:var(--ok);background:var(--ok-soft)}
+.opt.correct .n{color:var(--ok)}
+.opt.wrong{border-color:var(--bad);background:var(--bad-soft)}
+.opt.wrong .n{color:var(--bad)}
+.opt[disabled]{cursor:default}
+.expl{background:var(--accent-soft);border-radius:12px;padding:13px;margin-top:12px;
+      font-size:14px;line-height:1.7}
+.expl b{display:block;font-size:12px;color:var(--accent);margin-bottom:6px;
+        letter-spacing:.04em}
+.btn{display:block;width:100%;padding:14px;border-radius:12px;border:0;background:var(--accent);
+     color:#fff;font:inherit;font-weight:700;font-size:15px;cursor:pointer;margin-top:12px}
+.btn:active{opacity:.85}
+.btn.ghost{background:var(--card);color:var(--fg);border:1px solid var(--line)}
+.btn.danger{background:var(--card);color:var(--bad);border:1px solid var(--line)}
+
+/* 이론 */
+.topic{background:var(--card);border:1px solid var(--line);border-radius:12px;
+       margin-bottom:8px;overflow:hidden}
+.topic>summary{padding:13px 14px;font-weight:600;cursor:pointer;list-style:none;
+               display:flex;gap:10px;align-items:center;font-size:14.5px}
+.topic>summary::-webkit-details-marker{display:none}
+.topic>summary::after{content:'＋';margin-left:auto;color:var(--sub);flex:none}
+.topic[open]>summary::after{content:'－'}
+.topic .body{padding:0 14px 14px;font-size:14px;line-height:1.75}
+.topic .body p{margin:0 0 7px;padding-left:11px;position:relative;color:var(--fg)}
+.topic .body p.b::before{content:'';position:absolute;left:0;top:.68em;width:4px;height:4px;
+                         border-radius:50%;background:var(--accent)}
+.topic .body p.n{color:var(--sub);padding-left:11px}
+
+/* 해설노트 */
+.note{background:var(--card);border:1px solid var(--line);border-radius:12px;
+      padding:13px 14px;margin-bottom:9px}
+.note .q{font-weight:600;font-size:14.5px;margin-bottom:8px;line-height:1.55}
+.note .a{font-size:13.5px;color:var(--ok);font-weight:600;margin-bottom:6px}
+.note .e{font-size:13.5px;color:var(--sub);line-height:1.7}
+
+.search{width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--line);
+        background:var(--card);color:var(--fg);font:inherit;margin-bottom:12px}
+.search:focus{outline:2px solid var(--accent);outline-offset:-1px}
+
+nav{position:fixed;bottom:0;left:0;right:0;z-index:30;background:var(--card);
+    border-top:1px solid var(--line);display:flex;
+    padding-bottom:var(--safe-b)}
+nav button{flex:1;background:none;border:0;padding:9px 4px 8px;font:inherit;font-size:10.5px;
+           color:var(--sub);cursor:pointer;display:flex;flex-direction:column;
+           align-items:center;gap:3px}
+nav button .ic{font-size:19px;line-height:1}
+nav button.on{color:var(--accent);font-weight:700}
+.empty{text-align:center;color:var(--sub);padding:48px 20px;font-size:14px;line-height:1.8}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(78px + var(--safe-b));
+       background:#000c;color:#fff;padding:10px 18px;border-radius:99px;font-size:13px;
+       z-index:60;opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap}
+.toast.on{opacity:1}
+hr.sep{border:0;border-top:1px solid var(--line);margin:16px 0}
+.secttl{font-size:12px;color:var(--sub);font-weight:700;letter-spacing:.05em;
+        margin:18px 2px 8px}
+</style>
+</head>
+<body>
+<header>
+  <button class="iconbtn" id="back" style="display:none">‹ 뒤로</button>
+  <h1 id="title">사회조사분석사 2급<span class="sub" id="subtitle">필기 학습노트</span></h1>
+  <button class="iconbtn" id="headAct" style="display:none"></button>
+</header>
+<main id="app"></main>
+<nav>
+  <button data-tab="home" class="on"><span class="ic">🏠</span>홈</button>
+  <button data-tab="theory"><span class="ic">📘</span>이론</button>
+  <button data-tab="quiz"><span class="ic">✏️</span>문제풀이</button>
+  <button data-tab="notes"><span class="ic">💡</span>해설노트</button>
+  <button data-tab="wrong"><span class="ic">🔖</span>오답노트</button>
+</nav>
+<div class="toast" id="toast"></div>
+
+<script src="data.js"></script>
+<script>
+(function(){
+'use strict';
+const D = window.DATA;
+const app = document.getElementById('app');
+const titleEl = document.getElementById('title');
+const subEl = document.getElementById('subtitle');
+const backBtn = document.getElementById('back');
+const headAct = document.getElementById('headAct');
+
+/* ─────────── 저장소 ─────────── */
+const KEY = 'sjbs2-v1';
+const load = () => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; }
+                     catch(e){ return {}; } };
+let S = load();
+S.solved = S.solved || {};   // id -> 1 (맞힌 문제)
+S.wrong  = S.wrong  || {};   // id -> {n:틀린횟수, t:시각}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e){} };
+
+/* ─────────── 인덱스 ─────────── */
+const ALL = [];                       // 전체 문항 (챕터 정보 부착)
+D.questions.forEach(g => g.items.forEach(q => {
+  q._part = g.part; q._ch = g.chapter; q._chTitle = g.chapterTitle; q._partTitle = g.partTitle;
+  ALL.push(q);
+}));
+const BY_ID = {};
+ALL.forEach(q => BY_ID[q.id] = q);
+const solvable = q => !!q.answer;                    // 정답이 확정된 문항만 퀴즈로
+const QUIZ = ALL.filter(solvable);
+
+/* ─────────── 유틸 ─────────── */
+const esc = s => String(s == null ? '' : s)
+  .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const CIRC = ['①','②','③','④'];
+let toastT;
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('on');
+  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), 1500);
+}
+function setHead(t, s, showBack, actLabel, actFn){
+  titleEl.childNodes[0].nodeValue = t;
+  subEl.textContent = s || '';
+  backBtn.style.display = showBack ? '' : 'none';
+  if (actLabel){ headAct.style.display=''; headAct.textContent = actLabel; headAct.onclick = actFn; }
+  else headAct.style.display = 'none';
+}
+const chapters = () => D.questions.map(g => ({
+  part:g.part, ch:g.chapter, title:g.chapterTitle, partTitle:g.partTitle,
+  items:g.items, quiz:g.items.filter(solvable)
+}));
+function progressOf(list){
+  const done = list.filter(q => S.solved[q.id]).length;
+  return { done, total:list.length, pct: list.length ? Math.round(done/list.length*100) : 0 };
+}
+
+/* ─────────── 라우팅 ─────────── */
+let view = {tab:'home'};
+const stack = [];
+function go(v, push){
+  if (push !== false) stack.push(JSON.parse(JSON.stringify(view)));
+  view = v; render(); window.scrollTo(0,0);
+}
+backBtn.onclick = () => {
+  const prev = stack.pop();
+  view = prev || {tab:'home'};
+  render(); window.scrollTo(0,0);
+};
+document.querySelectorAll('nav button').forEach(b => {
+  b.onclick = () => { stack.length = 0; view = {tab:b.dataset.tab}; render(); window.scrollTo(0,0); };
+});
+function syncNav(){
+  document.querySelectorAll('nav button')
+    .forEach(b => b.classList.toggle('on', b.dataset.tab === view.tab));
+}
+
+/* ─────────── 홈 ─────────── */
+function viewHome(){
+  setHead('사회조사분석사 2급', '필기 학습노트', false);
+  const p = progressOf(QUIZ);
+  const wrongN = Object.keys(S.wrong).length;
+  let h = `<div class="stats">
+    <div class="stat"><b>${p.done}</b><span>맞힌 문제</span></div>
+    <div class="stat"><b style="color:var(--bad)">${wrongN}</b><span>오답노트</span></div>
+    <div class="stat"><b>${p.pct}<small style="font-size:13px">%</small></b><span>진도율</span></div>
+  </div>
+  <div class="card">
+    <div class="row spread"><h2 style="margin:0">전체 진도</h2>
+      <span class="muted">${p.done} / ${p.total}</span></div>
+    <div class="bar"><i style="width:${p.pct}%"></i></div>
+  </div>`;
+
+  h += `<button class="item" data-act="resume">
+      <span class="pill">이어풀기</span>
+      <span class="t"><b>안 푼 문제부터 계속</b>
+      <span>전체 ${QUIZ.length}문항 중 ${QUIZ.length - p.done}문항 남음</span></span>
+      <span class="chev">›</span></button>`;
+  if (wrongN) h += `<button class="item" data-act="wrongrun">
+      <span class="pill bad">복습</span>
+      <span class="t"><b>오답노트 다시풀기</b><span>${wrongN}문항</span></span>
+      <span class="chev">›</span></button>`;
+
+  h += `<div class="secttl">과목별 진도</div>`;
+  const parts = {};
+  chapters().forEach(c => {
+    parts[c.part] = parts[c.part] || {title:c.partTitle, quiz:[], items:[]};
+    parts[c.part].quiz.push(...c.quiz); parts[c.part].items.push(...c.items);
+  });
+  Object.keys(parts).forEach(k => {
+    const P = parts[k], pr = progressOf(P.quiz);
+    h += `<button class="item" data-part="${k}">
+      <span class="t"><b>${esc(P.title)}</b>
+      <span>${P.items.length}문항 · 풀이가능 ${P.quiz.length} · ${pr.pct}% 완료</span>
+      <span class="bar"><i style="width:${pr.pct}%"></i></span></span>
+      <span class="chev">›</span></button>`;
+  });
+
+  h += `<div class="secttl">데이터</div>
+   <div class="card"><div class="muted">
+   OCR로 자동 추출한 학습 자료입니다. 이론 ${D.theory.reduce((a,p)=>a+p.topics.length,0)}개 토픽,
+   문항 ${ALL.length}개, 정답이 확인된 문항 ${QUIZ.length}개, 해설 ${ALL.filter(q=>q.expl&&q.expl.length>15).length}개.
+   <br><br>정답을 대조하지 못한 문항은 풀이 대신 <b>해설노트</b>에서 볼 수 있습니다.
+   원문 OCR 특성상 띄어쓰기나 수식이 깨진 부분이 있을 수 있습니다.
+   </div></div>
+   <button class="btn danger" data-act="reset">학습 기록 초기화</button>`;
+  app.innerHTML = h;
+
+  app.querySelector('[data-act=resume]').onclick = () => {
+    const rest = QUIZ.filter(q => !S.solved[q.id]);
+    if (!rest.length) return toast('모든 문제를 맞혔습니다 🎉');
+    go({tab:'quiz', run:rest.map(q=>q.id), i:0, name:'이어풀기'});
+  };
+  const wr = app.querySelector('[data-act=wrongrun]');
+  if (wr) wr.onclick = () => startWrongRun();
+  app.querySelectorAll('[data-part]').forEach(b => {
+    b.onclick = () => go({tab:'quiz', part:+b.dataset.part});
+  });
+  app.querySelector('[data-act=reset]').onclick = () => {
+    if (confirm('맞힌 기록과 오답노트를 모두 지웁니다. 계속할까요?')){
+      S = {solved:{}, wrong:{}}; save(); render(); toast('초기화했습니다');
+    }
+  };
+}
+
+/* ─────────── 이론 ─────────── */
+function viewTheory(){
+  if (view.part == null){
+    setHead('이론 정리', '빨리보는 간단한 키워드', false);
+    let h = `<input class="search" id="ts" placeholder="이론 검색 (예: 표본추출, 신뢰도)">
+             <div id="tres"></div>`;
+    D.theory.forEach(p => {
+      h += `<button class="item" data-p="${p.part}">
+        <span class="pill">PART ${p.part}</span>
+        <span class="t"><b>${esc(p.title)}</b><span>${p.topics.length}개 토픽</span></span>
+        <span class="chev">›</span></button>`;
+    });
+    app.innerHTML = h;
+    app.querySelectorAll('[data-p]').forEach(b =>
+      b.onclick = () => go({tab:'theory', part:+b.dataset.p}));
+    const si = document.getElementById('ts'), res = document.getElementById('tres');
+    si.oninput = () => {
+      const k = si.value.trim();
+      if (k.length < 2){ res.innerHTML=''; return; }
+      const hits = [];
+      D.theory.forEach(p => p.topics.forEach(t => {
+        const txt = t.title + ' ' + t.body.map(b=>b.t).join(' ');
+        if (txt.includes(k)) hits.push({p, t});
+      }));
+      res.innerHTML = hits.length
+        ? hits.slice(0,40).map(({p,t}) => topicHTML(t, `PART ${p.part}`)).join('')
+        : `<div class="empty">검색 결과가 없습니다</div>`;
+    };
+    return;
+  }
+  const P = D.theory.find(x => x.part === view.part);
+  setHead(P.title, `PART ${P.part} · ${P.topics.length}개 토픽`, true);
+  app.innerHTML = P.topics.map(t => topicHTML(t)).join('');
+}
+function topicHTML(t, tag){
+  return `<details class="topic"><summary>${tag?`<span class="pill">${esc(tag)}</span>`:''}
+    <span>${esc(t.title)}</span></summary>
+    <div class="body">${t.body.map(b =>
+      `<p class="${b.b?'b':'n'}">${esc(b.t)}</p>`).join('')}</div></details>`;
+}
+
+/* ─────────── 문제풀이: 목록 ─────────── */
+function viewQuizList(){
+  const cs = chapters();
+  if (view.part == null){
+    setHead('문제풀이', `정답 확인된 ${QUIZ.length}문항`, false);
+    let h = '';
+    const parts = {};
+    cs.forEach(c => { parts[c.part] = parts[c.part] || {title:c.partTitle, cs:[]};
+                      parts[c.part].cs.push(c); });
+    Object.keys(parts).forEach(k => {
+      h += `<div class="secttl">PART ${k} · ${esc(parts[k].title)}</div>`;
+      parts[k].cs.forEach(c => {
+        const pr = progressOf(c.quiz);
+        h += `<button class="item" data-p="${c.part}" data-c="${c.ch}">
+          <span class="t"><b>${esc(c.title)}</b>
+          <span>${c.quiz.length}문항 풀이가능 · ${pr.done} 맞힘</span>
+          <span class="bar"><i style="width:${pr.pct}%"></i></span></span>
+          <span class="pill ${pr.pct===100?'ok':'grey'}">${pr.pct}%</span>
+          <span class="chev">›</span></button>`;
+      });
+    });
+    app.innerHTML = h;
+  } else {
+    const list = cs.filter(c => c.part === view.part);
+    setHead(list[0].partTitle, `PART ${view.part}`, true);
+    app.innerHTML = list.map(c => {
+      const pr = progressOf(c.quiz);
+      return `<button class="item" data-p="${c.part}" data-c="${c.ch}">
+        <span class="t"><b>${esc(c.title)}</b>
+        <span>${c.quiz.length}문항 풀이가능 · ${pr.done} 맞힘</span>
+        <span class="bar"><i style="width:${pr.pct}%"></i></span></span>
+        <span class="pill ${pr.pct===100?'ok':'grey'}">${pr.pct}%</span>
+        <span class="chev">›</span></button>`;
+    }).join('');
+  }
+  app.querySelectorAll('[data-c]').forEach(b => b.onclick = () => {
+    const c = cs.find(x => x.part === +b.dataset.p && x.ch === +b.dataset.c);
+    if (!c.quiz.length) return toast('이 챕터는 해설노트에서 볼 수 있습니다');
+    const rest = c.quiz.filter(q => !S.solved[q.id]);
+    const run = rest.length ? rest : c.quiz;
+    if (!rest.length) toast('이미 다 맞혔어요. 복습으로 진행합니다');
+    go({tab:'quiz', run:run.map(q=>q.id), i:0, name:c.title});
+  });
+}
+
+/* ─────────── 문제풀이: 진행 ─────────── */
+function startWrongRun(){
+  const ids = Object.keys(S.wrong).filter(id => BY_ID[id]);
+  if (!ids.length) return toast('오답노트가 비어 있습니다');
+  ids.sort((a,b) => (S.wrong[b].n||0) - (S.wrong[a].n||0));
+  go({tab:'quiz', run:ids, i:0, name:'오답 복습', review:true});
+}
+
+function viewQuizRun(){
+  const {run, i, name} = view;
+  if (i >= run.length) return viewQuizDone();
+  const q = BY_ID[run[i]];
+  setHead(name, `${i+1} / ${run.length}`, true);
+
+  let h = `<div class="card">
+    <div class="qmeta">
+      <span class="pill">${esc(q._chTitle)}</span>
+      ${q.rounds && q.rounds.length ? `<span class="pill grey">${esc(q.rounds.join(' '))} 기출</span>`:''}
+      ${S.wrong[q.id] ? `<span class="pill bad">오답 ${S.wrong[q.id].n}회</span>`:''}
+    </div>
+    <p class="stem">${esc(q.stem)}</p>
+    <div id="opts">`;
+  q.options.forEach((o,k) => {
+    h += `<button class="opt" data-k="${k+1}">
+            <span class="n">${CIRC[k]}</span><span>${esc(o)}</span></button>`;
+  });
+  h += `</div><div id="after"></div></div>
+    <div class="bar"><i style="width:${Math.round(i/run.length*100)}%"></i></div>`;
+  app.innerHTML = h;
+
+  let answered = false;
+  app.querySelectorAll('.opt').forEach(btn => btn.onclick = () => {
+    if (answered) return;
+    answered = true;
+    const pick = +btn.dataset.k, ok = pick === q.answer;
+    app.querySelectorAll('.opt').forEach(b => {
+      b.disabled = true;
+      const k = +b.dataset.k;
+      if (k === q.answer) b.classList.add('correct');
+      else if (k === pick) b.classList.add('wrong');
+    });
+    const after = document.getElementById('after');
+    if (ok){
+      S.solved[q.id] = 1;
+      if (S.wrong[q.id]) delete S.wrong[q.id];   // 맞히면 오답노트에서 해제
+      save();
+      after.innerHTML = `<div class="expl" style="background:var(--ok-soft)">
+        <b style="color:var(--ok)">정답입니다</b>${q.expl ? esc(q.expl) : '다음 문제로 넘어갑니다.'}</div>`;
+      setTimeout(() => { view.i++; render(); window.scrollTo(0,0); }, ok && q.expl ? 900 : 550);
+    } else {
+      const w = S.wrong[q.id] || {n:0};
+      w.n++; w.t = Date.now(); S.wrong[q.id] = w;
+      delete S.solved[q.id];
+      save();
+      after.innerHTML = `<div class="expl" style="background:var(--bad-soft)">
+          <b style="color:var(--bad)">오답 — 오답노트에 저장했습니다</b>
+          정답: ${CIRC[q.answer-1]} ${esc(q.options[q.answer-1])}
+          ${q.expl ? `<br><br>${esc(q.expl)}` : ''}</div>
+        <button class="btn" id="next">다음 문제 ›</button>`;
+      document.getElementById('next').onclick = () => {
+        view.i++; render(); window.scrollTo(0,0);
+      };
+    }
+  });
+}
+function viewQuizDone(){
+  setHead('완료', view.name, true);
+  const p = progressOf(QUIZ);
+  app.innerHTML = `<div class="card" style="text-align:center;padding:34px 18px">
+      <div style="font-size:42px;line-height:1">🎉</div>
+      <h2 style="margin:12px 0 6px">${esc(view.name)} 완료</h2>
+      <p class="muted" style="margin:0">전체 진도 ${p.done} / ${p.total} (${p.pct}%)</p>
+    </div>
+    <button class="btn" id="again">오답노트 복습하기</button>
+    <button class="btn ghost" id="home">홈으로</button>`;
+  document.getElementById('again').onclick = () => startWrongRun();
+  document.getElementById('home').onclick = () => {
+    stack.length = 0; view = {tab:'home'}; render(); window.scrollTo(0,0);
+  };
+}
+function viewQuiz(){
+  if (view.run) viewQuizRun(); else viewQuizList();
+}
+
+/* ─────────── 해설노트 ─────────── */
+function viewNotes(){
+  const cs = chapters();
+  if (view.ch == null){
+    setHead('해설노트', '문제 해설로 정리한 핵심', false);
+    let h = `<input class="search" id="ns" placeholder="해설 검색 (예: 신뢰도, 표집오차)">
+             <div id="nres"></div><div id="nlist">`;
+    const parts = {};
+    cs.forEach(c => { parts[c.part] = parts[c.part] || {title:c.partTitle, cs:[]};
+                      parts[c.part].cs.push(c); });
+    Object.keys(parts).forEach(k => {
+      h += `<div class="secttl">PART ${k} · ${esc(parts[k].title)}</div>`;
+      parts[k].cs.forEach(c => {
+        const n = c.items.filter(q => q.expl && q.expl.length > 15).length;
+        h += `<button class="item" data-p="${c.part}" data-c="${c.ch}">
+          <span class="t"><b>${esc(c.title)}</b><span>해설 ${n}개</span></span>
+          <span class="chev">›</span></button>`;
+      });
+    });
+    h += `</div>`;
+    app.innerHTML = h;
+    app.querySelectorAll('[data-c]').forEach(b => b.onclick =
+      () => go({tab:'notes', part:+b.dataset.p, ch:+b.dataset.c}));
+    const si = document.getElementById('ns'), res = document.getElementById('nres'),
+          lst = document.getElementById('nlist');
+    si.oninput = () => {
+      const k = si.value.trim();
+      if (k.length < 2){ res.innerHTML=''; lst.style.display=''; return; }
+      lst.style.display = 'none';
+      const hits = ALL.filter(q => (q.stem + ' ' + q.expl).includes(k));
+      res.innerHTML = hits.length
+        ? hits.slice(0,60).map(noteHTML).join('')
+        : `<div class="empty">검색 결과가 없습니다</div>`;
+    };
+    return;
+  }
+  const c = cs.find(x => x.part === view.part && x.ch === view.ch);
+  const list = c.items.filter(q => q.expl && q.expl.length > 15);
+  setHead(c.title, `해설 ${list.length}개`, true);
+  app.innerHTML = list.length ? list.map(noteHTML).join('')
+                              : `<div class="empty">이 챕터에는 추출된 해설이 없습니다</div>`;
+}
+function noteHTML(q){
+  return `<div class="note">
+    <div class="q">${esc(q.stem)}</div>
+    ${q.answer ? `<div class="a">정답 ${CIRC[q.answer-1]} ${esc(q.options[q.answer-1])}</div>` : ''}
+    <div class="e">${esc(q.expl)}</div></div>`;
+}
+
+/* ─────────── 오답노트 ─────────── */
+function viewWrong(){
+  const ids = Object.keys(S.wrong).filter(id => BY_ID[id]);
+  setHead('오답노트', `${ids.length}문항`, false,
+          ids.length ? '복습' : '', ids.length ? startWrongRun : null);
+  if (!ids.length){
+    app.innerHTML = `<div class="empty">아직 오답이 없습니다.<br>
+      문제를 풀다 틀리면 자동으로 여기에 모입니다.</div>`;
+    return;
+  }
+  ids.sort((a,b) => (S.wrong[b].t||0) - (S.wrong[a].t||0));
+  app.innerHTML = ids.map(id => {
+    const q = BY_ID[id], w = S.wrong[id];
+    return `<div class="note">
+      <div class="qmeta"><span class="pill">${esc(q._chTitle)}</span>
+        <span class="pill bad">${w.n}회 틀림</span></div>
+      <div class="q">${esc(q.stem)}</div>
+      ${q.options.map((o,k) =>
+        `<div class="e" style="color:${k+1===q.answer?'var(--ok)':'var(--sub)'};
+          font-weight:${k+1===q.answer?600:400}">${CIRC[k]} ${esc(o)}</div>`).join('')}
+      ${q.expl ? `<div class="expl" style="margin-top:10px">${esc(q.expl)}</div>` : ''}
+      <button class="btn ghost" data-del="${id}" style="margin-top:10px">오답노트에서 빼기</button>
+    </div>`;
+  }).join('') + `<button class="btn danger" id="clearall">오답노트 전체 비우기</button>`;
+  app.querySelectorAll('[data-del]').forEach(b => b.onclick = () => {
+    delete S.wrong[b.dataset.del]; save(); render(); toast('삭제했습니다');
+  });
+  document.getElementById('clearall').onclick = () => {
+    if (confirm('오답노트를 모두 비울까요?')){ S.wrong = {}; save(); render(); }
+  };
+}
+
+/* ─────────── 렌더 ─────────── */
+function render(){
+  syncNav();
+  ({home:viewHome, theory:viewTheory, quiz:viewQuiz,
+    notes:viewNotes, wrong:viewWrong}[view.tab] || viewHome)();
+}
+render();
+})();
+</script>
+</body>
+</html>

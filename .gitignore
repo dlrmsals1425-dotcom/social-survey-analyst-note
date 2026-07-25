@@ -1,0 +1,8 @@
+# 원본 자료 (대용량 — 저장소에 올리지 않음)
+*.pdf
+output/
+tmp/
+.agents/
+
+# 노트북 체크포인트
+.ipynb_checkpoints/
