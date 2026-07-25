@@ -4,6 +4,7 @@
    출력: data.json  { subjects, theory, questions }
 """
 import re, json, sys, os
+from collections import Counter
 sys.stdout.reconfigure(encoding='utf-8')
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from spacing import respace, fix_jamo, fix_jamo_lead
@@ -414,10 +415,182 @@ for (p, c), qs in sorted(groups.items()):
         'items': qs,
     })
 
+# ══════════════ 3. 이론을 챕터에 배치 ══════════════
+# 빨간키 토픽은 교재의 챕터 순서를 그대로 따른다.
+# 각 토픽이 어느 챕터의 기출 문항과 가장 많은 어휘를 공유하는지 점수를 매기고,
+# '순서를 거스르지 않는다'는 제약 아래 최적 분할을 찾는다(단조 DP).
+TOKEN = re.compile(r'[가-힣]{2,}')
+STOP = {'것은', '경우', '대한', '있다', '없다', '한다', '되는', '이다', '하는', '위한', '다음',
+        '가장', '모두', '해당', '관한', '설명', '내용', '방법', '때문', '통해', '따라', '또는',
+        '그리고', '하여', '에서', '으로', '이러한', '이를', '수록', '거리가', '옳은', '틀린'}
+
+
+def toks(s):
+    return [w for w in TOKEN.findall(s) if w not in STOP]
+
+
+def assign_chapters():
+    corpus = {}                       # (part, ch) -> Counter
+    for g in questions:
+        c = Counter()
+        for q in g['items']:
+            c.update(toks(q['stem']))
+            for o in q['options']:
+                c.update(toks(o))
+            c.update(toks(q['expl']))
+        total = sum(c.values()) or 1
+        corpus[(g['part'], g['chapter'])] = (c, total)
+
+    for p in theory:
+        chs = sorted(c for (pp, c) in corpus if pp == p['part'])
+        if not chs:
+            continue
+        n, m = len(p['topics']), len(chs)
+        # 토픽 i 가 챕터 j 와 얼마나 어울리는지
+        sc = [[0.0] * m for _ in range(n)]
+        for i, t in enumerate(p['topics']):
+            words = toks(t['title']) * 3 + toks(' '.join(b['t'] for b in t['body']))
+            for j, ch in enumerate(chs):
+                c, total = corpus[(p['part'], ch)]
+                sc[i][j] = sum(c.get(w, 0) / total for w in words) * 1000
+        # 단조 증가 제약 DP
+        best = [[0.0] * m for _ in range(n)]
+        prev = [[0] * m for _ in range(n)]
+        for j in range(m):
+            best[0][j] = sc[0][j]
+        for i in range(1, n):
+            run = -1e18
+            arg = 0
+            for j in range(m):
+                if best[i - 1][j] > run:
+                    run, arg = best[i - 1][j], j
+                best[i][j] = sc[i][j] + run
+                prev[i][j] = arg
+        j = max(range(m), key=lambda x: best[n - 1][x])
+        path = [0] * n
+        for i in range(n - 1, -1, -1):
+            path[i] = chs[j]
+            j = prev[i][j] if i else j
+        for t, ch in zip(p['topics'], path):
+            t['ch'] = ch
+
+
+assign_chapters()
+
+# ══════════════ 4. 해설 → 개념 정리 카드 ══════════════
+# 해설 중 '제목 + 불릿' 구조인 것은 그대로 이론 카드가 된다.
+BULLET_SPLIT = re.compile(r'\s*[•·▪∙‧・]\s*')
+BAD_TITLE = re.compile(r'해설|참조|PART|CHAPTER|다음과 같다$|^\d')
+# 앞머리에 눌어붙은 보기번호·자모나열 (예: 'ㄴ,ㄷ.2,ㅁ 과학적 방법의 특징')
+TITLE_LEAD = re.compile(r'^(?:[①②③④]|[ㄱ-ㅎ0-9]\s*[,.)]|\s)+')
+SENT_SPLIT = re.compile(r'(?<=다)\s+|(?<=다\.)\s*|(?<=[음함])\s+')
+
+
+def title_of(head):
+    """불릿 앞머리에서 개념 제목을 뽑는다.
+
+    책의 해설은 '…앞 문장. 제목 •항목 •항목' 꼴이 많다.
+    따라서 마지막 조각이 문장으로 끝나지 않으면 그것이 제목이고,
+    문장으로 끝나면 첫 어절(정의 대상)을 제목으로 삼고 본문은 첫 항목으로 넘긴다.
+    """
+    head = re.sub(r'~~', ' ', head or '')
+    head = TITLE_LEAD.sub('', head).strip(' -–—·.:')
+    # OCR이 흘린 낱글자 머리(‘성 ’, ‘실 ’, ‘ㅁ ’)를 떼어낸다
+    head = re.sub(r'^(?:[가-힣ㄱ-ㅎ]\s+){1,2}(?=[가-힣]{2,})', '', head)
+    if not head:
+        return '', ''
+    frags = [f.strip(' -–—·.:') for f in SENT_SPLIT.split(head) if f.strip(' -–—·.:')]
+    if not frags:
+        return '', ''
+    last = frags[-1]
+    if not re.search(r'(다|음|함|요|까)\.?$', last) and 4 <= len(last) <= 45:
+        return last, ' '.join(frags[:-1]).strip()
+    # 전체가 문장이면 정의 대상(첫 1~2어절)을 제목으로
+    w = head.split()
+    for n in (1, 2):
+        cand = ' '.join(w[:n]).strip(' -–—·.:,')
+        if 3 <= len(cand) <= 24 and not re.search(r'(다|음|함)\.?$', cand):
+            return cand, head
+    return '', ''
+
+
+# 제목이 조사·어미로 끝나면 문장 도막이지 개념 이름이 아니다
+TITLE_TAIL_BAD = re.compile(
+    r'(은|는|이|가|을|를|에|에서|으로|로|와|과|의|도|만|부터|까지|하고|하는|한|된|될|및|또는)$')
+TITLE_BAD_WORD = re.compile(r'해설|해실|해성|허설|허 설|없성|참조|PART|CHAPTER|&|\d{2,}')
+
+
+def good_title(t):
+    if not t or TITLE_BAD_WORD.search(t):
+        return False
+    t = t.strip()
+    if re.match(r'^(의|은|는|이|가|을|를|에|와|과|및)\s', t):   # 조사로 시작 = 문장 도막
+        return False
+    if not (4 <= len(t) <= 40):
+        return False
+    if len(re.findall(r'[가-힣]', t)) < 3:
+        return False
+    if TITLE_TAIL_BAD.search(t):
+        return False
+    if len(t.split()) < 2 and len(t) < 6:      # '과학적' 같은 토막
+        return False
+    return True
+
+
+def concept_cards():
+    by_ch = {}
+    for g in questions:
+        seen = {}
+        for q in g['items']:
+            e = q['expl']
+            if len(e) < 40 or BULLET_SPLIT.search(e) is None:
+                continue
+            parts_ = [x.strip(' -–—·.') for x in BULLET_SPLIT.split(e)]
+            head, bullets = parts_[0], [x for x in parts_[1:] if len(x) > 4]
+            if len(bullets) < 2:
+                continue
+            title, lead = title_of(head)
+            if not good_title(title):
+                continue
+            if lead:
+                bullets = [lead] + bullets
+            key = re.sub(r'\s', '', title)
+            cand = {'title': title, 'body': bullets, 'from': q['id']}
+            if key not in seen or len(bullets) > len(seen[key]['body']):
+                seen[key] = cand
+        if seen:
+            by_ch[(g['part'], g['chapter'])] = sorted(
+                seen.values(), key=lambda x: -len(x['body']))
+    return by_ch
+
+
+CARDS = concept_cards()
+
+# ── 이론을 과목 > 챕터 구조로 재조립 ──
+lessons = []
+for g in questions:
+    p, c = g['part'], g['chapter']
+    keywords = []
+    for tp in theory:
+        if tp['part'] != p:
+            continue
+        for t in tp['topics']:
+            if t.get('ch') == c:
+                keywords.append({'title': t['title'], 'body': t['body']})
+    cards = CARDS.get((p, c), [])
+    if not keywords and not cards:
+        continue
+    lessons.append({
+        'part': p, 'partTitle': PARTS[p],
+        'chapter': c, 'chapterTitle': CHAPTERS[(p, c)],
+        'keywords': keywords, 'cards': cards,
+    })
+
 data = {
     'source': '사회조사분석사 2급 필기 (OCR 자동 추출)',
     'parts': PARTS,
     'theory': theory,
+    'lessons': lessons,
     'questions': questions,
 }
 json.dump(data, open(OUT, 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
@@ -425,9 +598,14 @@ json.dump(data, open(OUT, 'w', encoding='utf-8'), ensure_ascii=False, separators
 tot = sum(len(g['items']) for g in questions)
 ans = sum(1 for g in questions for q in g['items'] if q.get('answer'))
 expl = sum(1 for g in questions for q in g['items'] if len(q['expl']) > 15)
-print(f'이론 토픽 {sum(len(p["topics"]) for p in theory)}')
+print(f'이론 토픽 {sum(len(p["topics"]) for p in theory)}'
+      f' | 개념카드 {sum(len(l["cards"]) for l in lessons)}')
 print(f'문항 {tot} | 정답확정 {ans} | 해설보유 {expl}')
 for g in questions:
     a = sum(1 for q in g['items'] if q.get('answer'))
-    print(f"  PART{g['part']} CH{g['chapter']} {g['chapterTitle']}: {len(g['items'])}문항 (정답 {a})")
+    ls = next((l for l in lessons if (l['part'], l['chapter']) == (g['part'], g['chapter'])), None)
+    kw = len(ls['keywords']) if ls else 0
+    cd = len(ls['cards']) if ls else 0
+    print(f"  PART{g['part']} CH{g['chapter']} {g['chapterTitle']}: "
+          f"{len(g['items'])}문항(정답 {a}) · 키워드 {kw} · 개념 {cd}")
 print('→', os.path.abspath(OUT), os.path.getsize(OUT) // 1024, 'KB')
