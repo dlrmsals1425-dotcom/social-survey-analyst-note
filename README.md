@@ -47,3 +47,14 @@ docs/
 원본 PDF를 OCR한 자료라 띄어쓰기가 붙어 있거나 수식·표가 깨진 부분이 있습니다.
 정답을 교재 정답표와 대조하지 못한 문항은 풀이에서 제외하고 **해설노트**에서만 볼 수 있게 했습니다.
 학습용 개인 자료이며, 교재 저작권은 원저작자에게 있습니다.
+
+## 데이터 재생성
+
+```bash
+OCR_MD="교재 OCR 마크다운 경로.md" python tools/build_data.py docs/data.json
+# 앱은 window.DATA 를 읽으므로 data.js 로 감싼다
+python - << 'PY'
+d = open('docs/data.json', encoding='utf-8').read()
+open('docs/data.js', 'w', encoding='utf-8').write('window.DATA=' + d + ';')
+PY
+```
